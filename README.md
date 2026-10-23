@@ -11,12 +11,12 @@ flowchart LR
     Internet((Internet))
 
     subgraph Azure
-        LB[Standard Load Balancer\nDNAT 80 -> 8080\nhealth probe: HTTP /health]
+        LB["Standard Load Balancer<br/>DNAT 80 -> 8080<br/>health probe: HTTP /health"]
         subgraph VNet["vnet-baseline (10.0.0.0/16)"]
             subgraph Subnet["snet-baseline (10.0.1.0/24)"]
-                VMSS[VMSS compute\nUbuntu 24.04\ncloud-init :8080\n(Phase 4)]
+                VMSS["VMSS compute<br/>Ubuntu 24.04<br/>cloud-init :8080<br/>(Phase 4)"]
             end
-            NATGW[NAT Gateway\nstatic egress IP]
+            NATGW["NAT Gateway<br/>static egress IP"]
         end
     end
 
