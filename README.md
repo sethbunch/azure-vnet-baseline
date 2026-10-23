@@ -1,4 +1,4 @@
-# azure-vpc-baseline
+# azure-vnet-baseline
 
 A production-grade Azure network baseline built with Terraform: private compute, deterministic egress, and edge-based ingress — no public IPs on workloads, ever.
 
