@@ -17,3 +17,8 @@ output "lb_ip" {
   description = "Public IP of the LB frontend. Point DNS here."
   value       = azurerm_public_ip.lb_pip.ip_address
 }
+
+output "vmss_id" {
+  description = "The id of the VMSS"
+  value       = azurerm_linux_virtual_machine_scale_set.vmss.id
+}

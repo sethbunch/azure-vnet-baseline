@@ -2,7 +2,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 4.0"
     }
   }
 }
@@ -14,6 +14,7 @@ provider "azurerm" {
 resource "azurerm_resource_group" "rg" {
   name     = "rg-${var.project_name}"
   location = var.location
+  tags     = var.tags
 
 }
 
@@ -21,6 +22,7 @@ resource "azurerm_network_security_group" "app_nsg" {
   name                = "nsg-${var.project_name}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
+  tags                = var.tags
 }
 
 resource "azurerm_virtual_network" "vnet" {
@@ -28,6 +30,7 @@ resource "azurerm_virtual_network" "vnet" {
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
   address_space       = [var.vnet_cidr]
+  tags                = var.tags
 }
 
 resource "azurerm_subnet" "app" {
@@ -42,14 +45,16 @@ resource "azurerm_public_ip" "nat_pip" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   allocation_method   = "Static"
-  sku                 = var.pub_ip_sku
+  sku                 = "Standard"
+  tags                = var.tags
 }
 
 resource "azurerm_nat_gateway" "nat" {
   name                = "nat-${var.project_name}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku_name            = var.nat_gateway_sku
+  sku_name            = "Standard"
+  tags                = var.tags
 }
 
 resource "azurerm_nat_gateway_public_ip_association" "natpipa" {
@@ -67,14 +72,16 @@ resource "azurerm_public_ip" "lb_pip" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   allocation_method   = "Static"
-  sku                 = var.pub_ip_sku
+  sku                 = "Standard"
+  tags                = var.tags
 }
 
 resource "azurerm_lb" "lb" {
   name                = "lb-${var.project_name}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku                 = var.pub_ip_sku
+  sku                 = "Standard"
+  tags                = var.tags
 
   frontend_ip_configuration {
     name                 = "PublicFrontend"
@@ -87,9 +94,10 @@ resource "azurerm_lb_backend_address_pool" "app_pool" {
   name            = "BackEndAddressPool"
 }
 
-resource "azurerm_lb_probe" "lb_probe" {
+resource "azurerm_lb_probe" "http_health_probe" {
   loadbalancer_id     = azurerm_lb.lb.id
   name                = "ssh-running-probe"
+  protocol            = "Http"
   port                = var.backend_port
   request_path        = "/health"
   interval_in_seconds = 5
@@ -98,12 +106,54 @@ resource "azurerm_lb_probe" "lb_probe" {
 
 resource "azurerm_lb_rule" "lb_rule" {
   loadbalancer_id                = azurerm_lb.lb.id
-  name                           = "80-to-8080"
+  name                           = "http"
   protocol                       = "Tcp"
   frontend_port                  = var.frontend_port
   backend_port                   = var.backend_port
   frontend_ip_configuration_name = "PublicFrontend"
-  backend_address_pool_ids       =  [azurerm_lb_backend_address_pool.app_pool.id]
-  probe_id                       = azurerm_lb_probe.lb_probe.id
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.app_pool.id]
+  probe_id                       = azurerm_lb_probe.http_health_probe.id
   disable_outbound_snat          = true
+}
+
+resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
+  name                = "vmss-${var.project_name}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  sku                 = "Standard_B1s"
+  instances           = 1
+  admin_username      = "adminuser"
+
+  admin_ssh_key {
+    username   = "adminuser"
+    public_key = file(pathexpand(var.ssh_public_key_path))
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  os_disk {
+    storage_account_type = "Standard_LRS"
+    caching              = "ReadWrite"
+  }
+
+  network_interface {
+    name    = "nic-internal"
+    primary = true
+
+    ip_configuration {
+      name                                   = "internal"
+      primary                                = true
+      subnet_id                              = azurerm_subnet.app.id
+      load_balancer_backend_address_pool_ids = [azurerm_lb_backend_address_pool.app_pool.id]
+    }
+  }
+
+  upgrade_mode    = "Automatic"
+  health_probe_id = azurerm_lb_probe.http_health_probe.id
+  custom_data     = filebase64("cloud-init.yaml")
 }

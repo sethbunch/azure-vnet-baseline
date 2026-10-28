@@ -23,21 +23,9 @@ variable "subnet_cidr" {
 }
 
 variable "ssh_public_key_path" {
-  description = "SSH key for the Phase 4 VMSS instances. Nothing in phases 1-3 uses this yet."
+  description = "SSH key for the VMSS instances."
   type        = string
   default     = "~/.ssh/id_rsa.pub"
-}
-
-variable "nat_gateway_sku" {
-  description = "NAT gateway SKU. Standard is the only one Azure supports."
-  type        = string
-  default     = "Standard"
-}
-
-variable "pub_ip_sku" {
-  description = "SKU for the public IPs and the load balancer. Needs to be Standard for the NAT gateway setup to work."
-  type        = string
-  default     = "Standard"
 }
 
 variable "frontend_port" {
@@ -50,4 +38,13 @@ variable "backend_port" {
   description = "Port the app listens on. The LB rule sends traffic here and the probe asks for /health on it."
   type        = number
   default     = 8080
+}
+
+variable "tags" {
+  description = "Tags for resources"
+  type        = map(string)
+  default = {
+    "Owner"   = "Terraform"
+    "Project" = "Baseline"
+  }
 }
