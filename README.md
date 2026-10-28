@@ -5,7 +5,7 @@ An Azure network baseline I'm building with Terraform to get the foundations rig
 ![Terraform](https://img.shields.io/badge/terraform-1.x-7B42BC?logo=terraform&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Still a work in progress. Phases 1-3 (network, NAT, load balancer) are done, compute and NSG hardening come next.
+Still a work in progress. Phases 1-4 (network, NAT, load balancer, VMSS compute) are done, NSG hardening and end-to-end validation come next.
 
 ## Architecture
 
@@ -51,7 +51,7 @@ Health checks: an HTTP probe asks for `/health` on 8080 every 5 seconds, and an 
 | 1 | Resource group, VNet, subnet, NSG placeholder | ✅ |
 | 2 | NAT Gateway + static public IP + subnet association | ✅ |
 | 3 | Standard LB, public frontend, HTTP health probe (`/health` on 8080), 80→8080 DNAT rule, backend pool | ✅ |
-| 4 | VMSS (Ubuntu 24.04, cloud-init Python service on 8080) | 🔜 |
+| 4 | VMSS (Ubuntu 24.04, cloud-init Python service on 8080) | ✅ |
 | 5 | NSG rules + end-to-end validation | 🔜 |
 
 ## NSG rules (Phase 5)
