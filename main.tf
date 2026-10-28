@@ -96,7 +96,7 @@ resource "azurerm_lb_backend_address_pool" "app_pool" {
 
 resource "azurerm_lb_probe" "http_health_probe" {
   loadbalancer_id     = azurerm_lb.lb.id
-  name                = "ssh-running-probe"
+  name                = "http_health_probe"
   protocol            = "Http"
   port                = var.backend_port
   request_path        = "/health"
@@ -156,4 +156,38 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   upgrade_mode    = "Automatic"
   health_probe_id = azurerm_lb_probe.http_health_probe.id
   custom_data     = filebase64("cloud-init.yaml")
+  tags            = var.tags
+}
+
+resource "azurerm_subnet_network_security_group_association" "nsg-sub" {
+  subnet_id                 = azurerm_subnet.app.id
+  network_security_group_id = azurerm_network_security_group.app_nsg.id
+}
+
+resource "azurerm_network_security_rule" "allow_8080-internet" {
+  name                        = "InboundInternet"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = var.backend_port
+  source_address_prefix       = "Internet"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.app_nsg.name
+}
+
+resource "azurerm_network_security_rule" "allow_8080_probe" {
+  name                        = "InboundALB"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = var.backend_port
+  source_address_prefix       = "AzureLoadBalancer"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.app_nsg.name
 }
