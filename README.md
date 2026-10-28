@@ -52,7 +52,7 @@ Health checks: an HTTP probe asks for `/health` on 8080 every 5 seconds, and an 
 | 2 | NAT Gateway + static public IP + subnet association | ✅ |
 | 3 | Standard LB, public frontend, HTTP health probe (`/health` on 8080), 80→8080 DNAT rule, backend pool | ✅ |
 | 4 | VMSS (Ubuntu 24.04, cloud-init Python service on 8080) | ✅ |
-| 5 | NSG rules + end-to-end validation | 🔜 |
+| 5 | NSG rules + end-to-end validation | ✅ |
 
 ## NSG rules (Phase 5)
 
@@ -61,6 +61,13 @@ The gotcha here is that Azure's Standard LB doesn't hide the client. The backend
 - Allow TCP 8080 from `AzureLoadBalancer` (probes)
 - Allow TCP 8080 from `Internet` (actual traffic - skip this and your probes go green while every request drops)
 - Deny everything else inbound
+
+## Field gotchas (learned the hard way)
+
+- **Burstable v2 "p" SKUs are Arm64.** `Standard_B2pts_v2` requires an arm64 image (`minimal-arm64`), not the default x64 `server` sku — otherwise ARM rejects the create with a 400 on CPU architecture.
+- **Region changes are full migrations.** Location is baked into nearly every resource; flipping it forces destroy/recreate of the whole stack, and async Azure deletions will 409 against same-name recreations.
+- **Rolling upgrades gate on health.** With a single-instance VMSS, one unhealthy instance (100% > the 20% `max_unhealthy` threshold) blocks the very update that would fix it. `az vmss reimage` applies the model directly, no health pre-check.
+- **cloud-init `write_files` indentation is load-bearing.** One Python line 2 spaces shallow = SyntaxError inside the instance while Terraform shows green. Verify inside the box (`run-command invoke`), not just the apply log.
 
 ## Usage
 
@@ -75,7 +82,7 @@ terraform apply
 Defaults live in variables.tf. Override them on the command line instead of editing:
 
 ```bash
-terraform apply -var="project_name=demo" -var="location=eastus2"
+terraform apply -var="project_name=demo" -var="location=southcentralus"
 ```
 
 Once it's up:

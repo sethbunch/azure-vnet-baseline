@@ -15,10 +15,10 @@ write_files:
           self.send_response(200)
           self.end_headers()
           self.wfile.write(b"healthy")
-      else:
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(socket.gethostname().encode())
+        else:
+          self.send_response(200)
+          self.end_headers()
+          self.wfile.write(socket.gethostname().encode())
 
     HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
 

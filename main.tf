@@ -120,7 +120,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   name                = "vmss-${var.project_name}"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  sku                 = "Standard_B1s"
+  sku                 = "Standard_B2pts_v2"
   instances           = 1
   admin_username      = "adminuser"
 
@@ -132,7 +132,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   source_image_reference {
     publisher = "Canonical"
     offer     = "ubuntu-24_04-lts"
-    sku       = "server"
+    sku       = "minimal-arm64"
     version   = "latest"
   }
 
